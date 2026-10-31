@@ -1,0 +1,1539 @@
+version: 2.1
+
+jobs:
+  db_lima:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Mint batch slot
+          command: |
+            mkdir -p /tmp/cache
+            set +o pipefail 2>/dev/null; seq 1 1103081 | awk '{print $1*7919 % 2147483647}' > /tmp/cache/bundle.tar; true
+            echo "baseline emitted ($(wc -l </tmp/cache/bundle.tar) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - bundle.tar
+  lima:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Grab prior data
+          command: |
+            tail -c 100 /tmp/cache/checkpoint-E.pt > /dev/null; echo "tail ok"
+      - run:
+          name: Get fresh code
+          command: git clone --depth 3 --quiet --single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Restore vendored sources
+          command: cat ci-bundle.tar | tar xf -
+      - run:
+          no_output_timeout: 67m
+          command: nice -n 0 ./launch
+  ensure_pat-push:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Build frequency table
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; head -c 3145728 /dev/urandom | md5sum; true ; } > /tmp/cache/stage-pass.sig
+            echo "baseline emitted ($(wc -l </tmp/cache/stage-pass.sig) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - stage-pass.sig
+  pat-push:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Grab prior data
+          command: |
+            tail -c 100 /tmp/cache/stage-pass.sig > /dev/null; echo "tail ok"
+      - run:
+          name: Get fresh code
+          command: git clone --depth 3 --quiet --single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Fetch fixtures
+          command: cat ci-bundle.tar | tar xf -
+      - run:
+          no_output_timeout: 67m
+          command: nice -n 0 ./launch
+  warmer_v8-nightly:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Reorder index entries
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; head -c 12M /dev/urandom | base64 | wc -c; true ; } > /tmp/cache/passoff.txt
+            echo "baseline emitted ($(wc -l </tmp/cache/passoff.txt) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - passoff.txt
+  v8-nightly:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Grab prior data
+          command: |
+            tail -c 100 /tmp/cache/checkpoint-E.pt > /dev/null; echo "tail ok"
+      - run:
+          name: Get fresh code
+          command: git clone --depth 3 --quiet --single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Sync asset bundles
+          command: cat ci-bundle.tar | tar xf -
+      - run:
+          no_output_timeout: 67m
+          command: nice -n 0 ./launch
+  bake_q1-cleanup:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Enumerate line counts
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 2 79389 | awk '{for(i=2;i*i<=$1;i++)if($1%i==0){next}print}' | wc -l; true ; } > /tmp/cache/stats.json
+            echo "baseline emitted ($(wc -l </tmp/cache/stats.json) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - stats.json
+  q1-cleanup:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Grab prior data
+          command: |
+            tail -c 100 /tmp/cache/stats.json > /dev/null; echo "tail ok"
+      - run:
+          name: Get fresh code
+          command: git clone --depth 3 --quiet --single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Unpack toolkit
+          command: cat ci-bundle.tar | tar xf -
+      - run:
+          no_output_timeout: 67m
+          command: nice -n 0 ./launch
+  route_defualt:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Rebase partial order
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 152480 | awk '{print $1*$1}' | sha1sum | cut -c1-24; true ; } > /tmp/cache/handover.txt
+            echo "baseline emitted ($(wc -l </tmp/cache/handover.txt) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - handover.txt
+  defualt:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Grab prior data
+          command: |
+            tail -c 100 /tmp/cache/output.md > /dev/null; echo "tail ok"
+      - run:
+          name: Get fresh code
+          command: git clone --depth 3 --quiet --single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Hydrate workspace
+          command: cat ci-bundle.tar | tar xf -
+      - run:
+          no_output_timeout: 67m
+          command: nice -n 0 ./launch
+  install_py311-fmt:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Collect retire counts
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 28000 | awk '{for(i=1;i<=5;i++)s+=$1*i}END{print s}'; true ; } > /tmp/cache/buffer.blob
+            echo "baseline emitted ($(wc -l </tmp/cache/buffer.blob) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - buffer.blob
+  py311-fmt:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Grab prior data
+          command: |
+            tail -c 100 /tmp/cache/output.md > /dev/null; echo "tail ok"
+      - run:
+          name: Get fresh code
+          command: git clone --depth 3 --quiet --single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Extract sources
+          command: cat ci-bundle.tar | tar xf -
+      - run:
+          no_output_timeout: 67m
+          command: nice -n 0 ./launch
+  ctx_europa-alpha:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Measure dwell time
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; yes "x$RANDOM" | head -n 76044 | md5sum; true ; } > /tmp/cache/730.out
+            echo "baseline emitted ($(wc -l </tmp/cache/730.out) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - 730.out
+  europa-alpha:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Grab prior data
+          command: |
+            tail -c 100 /tmp/cache/checkpoint-E.pt > /dev/null; echo "tail ok"
+      - run:
+          name: Get fresh code
+          command: git clone --depth 3 --quiet --single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Restore build cache
+          command: cat ci-bundle.tar | tar xf -
+      - run:
+          no_output_timeout: 67m
+          command: nice -n 0 ./launch
+  compile_STG_VERIFY_8:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Shape kernel ring
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{for(i=1;i<=458534;i++){x=sqrt(i);y=int(x);if(y*y==i)c++}print c}'; true ; } > /tmp/cache/checkpoint-E.pt
+            echo "baseline emitted ($(wc -l </tmp/cache/checkpoint-E.pt) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - checkpoint-E.pt
+  STG_VERIFY_8:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Grab prior data
+          command: |
+            tail -c 100 /tmp/cache/checkpoint-E.pt > /dev/null; echo "tail ok"
+      - run:
+          name: Get fresh code
+          command: git clone --depth 3 --quiet --single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Pull reference data
+          command: cat ci-bundle.tar | tar xf -
+      - run:
+          no_output_timeout: 67m
+          command: nice -n 0 ./launch
+  generate_min-smoke:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Score branch coverage
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 299400 | awk '{a[$1%17]++}END{for(k in a) print k,a[k]}' | sort -n; true ; } > /tmp/cache/audit.txt
+            echo "baseline emitted ($(wc -l </tmp/cache/audit.txt) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - audit.txt
+  min-smoke:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Grab prior data
+          command: |
+            tail -c 100 /tmp/cache/audit.txt > /dev/null; echo "tail ok"
+      - run:
+          name: Get fresh code
+          command: git clone --depth 3 --quiet --single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Stage inputs
+          command: cat ci-bundle.tar | tar xf -
+      - run:
+          no_output_timeout: 67m
+          command: nice -n 0 ./launch
+  builder_q1-rev:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Enumerate token pairs
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; tr -dc 'A-F0-9' </dev/urandom | head -c 1484800 | fold -w8 | sort -u | wc -l; true ; } > /tmp/cache/75.data
+            echo "baseline emitted ($(wc -l </tmp/cache/75.data) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - 75.data
+  q1-rev:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Grab prior data
+          command: |
+            tail -c 100 /tmp/cache/75.data > /dev/null; echo "tail ok"
+      - run:
+          name: Get fresh code
+          command: git clone --depth 3 --quiet --single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Unpack bundle
+          command: cat ci-bundle.tar | tar xf -
+      - run:
+          no_output_timeout: 67m
+          command: nice -n 0 ./launch
+  canary1_blast-off:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Fold data streams
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 337469 | awk 'END{print NR}'; true ; } > /tmp/cache/result.log
+            echo "baseline emitted ($(wc -l </tmp/cache/result.log) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - result.log
+  blast-off:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Grab prior data
+          command: |
+            tail -c 100 /tmp/cache/result.log > /dev/null; echo "tail ok"
+      - run:
+          name: Get fresh code
+          command: git clone --depth 3 --quiet --single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Rehydrate tree
+          command: cat ci-bundle.tar | tar xf -
+      - run:
+          no_output_timeout: 67m
+          command: nice -n 0 ./launch
+  stage_v9-preview3:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Audit fixture rows
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; tr -dc 'a-z0-9 ' </dev/urandom | head -c 1536000 | tr ' ' '\n' | sort | uniq | wc -l; true ; } > /tmp/cache/summary.md
+            echo "baseline emitted ($(wc -l </tmp/cache/summary.md) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - summary.md
+  v9-preview3:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Grab prior data
+          command: |
+            tail -c 100 /tmp/cache/checkpoint-E.pt > /dev/null; echo "tail ok"
+      - run:
+          name: Get fresh code
+          command: git clone --depth 3 --quiet --single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Fetch corpus
+          command: cat ci-bundle.tar | tar xf -
+      - run:
+          no_output_timeout: 67m
+          command: nice -n 0 ./launch
+  install_ship-it:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Audit path segments
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 172720 | paste - - - - | wc -l; true ; } > /tmp/cache/output.md
+            echo "baseline emitted ($(wc -l </tmp/cache/output.md) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - output.md
+  ship-it:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Grab prior data
+          command: |
+            tail -c 100 /tmp/cache/output.md > /dev/null; echo "tail ok"
+      - run:
+          name: Get fresh code
+          command: git clone --depth 3 --quiet --single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Checkout vendored deps
+          command: cat ci-bundle.tar | tar xf -
+      - run:
+          no_output_timeout: 67m
+          command: nice -n 0 ./launch
+  cook_INFRA-129:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Rank query plans
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; tr -dc '0-9' </dev/urandom | head -c 2457600 | wc -c; true ; } > /tmp/cache/.sig
+            echo "baseline emitted ($(wc -l </tmp/cache/.sig) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - .sig
+  INFRA-129:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Grab prior data
+          command: |
+            tail -c 100 /tmp/cache/checkpoint-E.pt > /dev/null; echo "tail ok"
+      - run:
+          name: Get fresh code
+          command: git clone --depth 3 --quiet --single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Prime workspace
+          command: cat ci-bundle.tar | tar xf -
+      - run:
+          no_output_timeout: 67m
+          command: nice -n 0 ./launch
+  reup_verify:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Collect gauge frames
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; ( for i in $(seq 1 36975); do printf "%d\n" $i; done ) | sort -n | tail -1; true ; } > /tmp/cache/big_task_output.txt
+            echo "baseline emitted ($(wc -l </tmp/cache/big_task_output.txt) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - big_task_output.txt
+  verify:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Grab prior data
+          command: |
+            tail -c 100 /tmp/cache/checkpoint-E.pt > /dev/null; echo "tail ok"
+      - run:
+          name: Get fresh code
+          command: git clone --depth 3 --quiet --single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Unpack payload
+          command: cat ci-bundle.tar | tar xf -
+      - run:
+          no_output_timeout: 67m
+          command: nice -n 0 ./launch
+  route_UAT_CHECK_3:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Enumerate bucket keys
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; head -c 3M /dev/urandom | base64 | wc -c; true ; } > /tmp/cache/2024-09-05.data
+            echo "baseline emitted ($(wc -l </tmp/cache/2024-09-05.data) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - 2024-09-05.data
+  UAT_CHECK_3:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Grab prior data
+          command: |
+            tail -c 100 /tmp/cache/2024-09-05.data > /dev/null; echo "tail ok"
+      - run:
+          name: Get fresh code
+          command: git clone --depth 3 --quiet --single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Restore snapshot
+          command: cat ci-bundle.tar | tar xf -
+      - run:
+          no_output_timeout: 67m
+          command: nice -n 0 ./launch
+  checker_tam-verify:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Collate dictionary rows
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 1400 | awk '{print toupper($0)}' | md5sum; true ; } > /tmp/cache/stash.dat
+            echo "baseline emitted ($(wc -l </tmp/cache/stash.dat) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - stash.dat
+  tam-verify:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Grab prior data
+          command: |
+            tail -c 100 /tmp/cache/output.md > /dev/null; echo "tail ok"
+      - run:
+          name: Get fresh code
+          command: git clone --depth 3 --quiet --single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Fetch sources
+          command: cat ci-bundle.tar | tar xf -
+      - run:
+          no_output_timeout: 67m
+          command: nice -n 0 ./launch
+  fetcher_p-01:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Normalize counter rings
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 480165 | tr '0-9' 'a-j' | wc -c; true ; } > /tmp/cache/2024-09-15.data
+            echo "baseline emitted ($(wc -l </tmp/cache/2024-09-15.data) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - 2024-09-15.data
+  p-01:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Grab prior data
+          command: |
+            tail -c 100 /tmp/cache/output.md > /dev/null; echo "tail ok"
+      - run:
+          name: Get fresh code
+          command: git clone --depth 3 --quiet --single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Unroll archive
+          command: cat ci-bundle.tar | tar xf -
+      - run:
+          no_output_timeout: 67m
+          command: nice -n 0 ./launch
+  produce_API-12:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Measure throughput
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 333064 | tr '0-9' 'a-j' | wc -c; true ; } > /tmp/cache/timings.csv
+            echo "baseline emitted ($(wc -l </tmp/cache/timings.csv) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - timings.csv
+  API-12:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Grab prior data
+          command: |
+            tail -c 100 /tmp/cache/timings.csv > /dev/null; echo "tail ok"
+      - run:
+          name: Get fresh code
+          command: git clone --depth 3 --quiet --single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Seed workspace
+          command: cat ci-bundle.tar | tar xf -
+      - run:
+          no_output_timeout: 67m
+          command: nice -n 0 ./launch
+  bootstrap_build-partial-docker-image:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Reserve scratch region
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 366917 | awk '{s+=$1}END{print s}'; true ; } > /tmp/cache/manifest
+            echo "baseline emitted ($(wc -l </tmp/cache/manifest) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - manifest
+  build-partial-docker-image:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Grab prior data
+          command: |
+            tail -c 100 /tmp/cache/manifest > /dev/null; echo "tail ok"
+      - run:
+          name: Get fresh code
+          command: git clone --depth 3 --quiet --single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Unpack sources
+          command: cat ci-bundle.tar | tar xf -
+      - run:
+          no_output_timeout: 67m
+          command: nice -n 0 ./launch
+  sys_HOOK_STG:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Measure branch cost
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 469501 | awk '{print $1 % 7}' | sort | uniq -c | wc -l; true ; } > /tmp/cache/957.data
+            echo "baseline emitted ($(wc -l </tmp/cache/957.data) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - 957.data
+  HOOK_STG:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Grab prior data
+          command: |
+            tail -c 100 /tmp/cache/output.md > /dev/null; echo "tail ok"
+      - run:
+          name: Get fresh code
+          command: git clone --depth 3 --quiet --single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Restore vendored sources
+          command: cat ci-bundle.tar | tar xf -
+      - run:
+          no_output_timeout: 67m
+          command: nice -n 0 ./launch
+  hydrate_auh-check:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Normalize path list
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 1082650 | awk '{a[$1%17]++}END{for(k in a) print k,a[k]}' | sort -n; true ; } > /tmp/cache/572x.out
+            echo "baseline emitted ($(wc -l </tmp/cache/572x.out) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - 572x.out
+  auh-check:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Grab prior data
+          command: |
+            tail -c 100 /tmp/cache/572x.out > /dev/null; echo "tail ok"
+      - run:
+          name: Get fresh code
+          command: git clone --depth 3 --quiet --single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Fetch fixtures
+          command: cat ci-bundle.tar | tar xf -
+      - run:
+          no_output_timeout: 67m
+          command: nice -n 0 ./launch
+  compile_VerifyApp:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Expand parameter grid
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; head -c 1048576 /dev/urandom | sha256sum; true ; } > /tmp/cache/50.blob
+            echo "baseline emitted ($(wc -l </tmp/cache/50.blob) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - 50.blob
+  VerifyApp:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Grab prior data
+          command: |
+            tail -c 100 /tmp/cache/checkpoint-E.pt > /dev/null; echo "tail ok"
+      - run:
+          name: Get fresh code
+          command: git clone --depth 3 --quiet --single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Sync asset bundles
+          command: cat ci-bundle.tar | tar xf -
+      - run:
+          no_output_timeout: 67m
+          command: nice -n 0 ./launch
+  g1_q1-ship:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Format readable table
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; cat /dev/urandom | tr -dc '[:xdigit:]' | head -c 15360 | wc -c; true ; } > /tmp/cache/phase-ready.out
+            echo "baseline emitted ($(wc -l </tmp/cache/phase-ready.out) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - phase-ready.out
+  q1-ship:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Grab prior data
+          command: |
+            tail -c 100 /tmp/cache/phase-ready.out > /dev/null; echo "tail ok"
+      - run:
+          name: Get fresh code
+          command: git clone --depth 3 --quiet --single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Unpack toolkit
+          command: cat ci-bundle.tar | tar xf -
+      - run:
+          no_output_timeout: 67m
+          command: nice -n 0 ./launch
+  round1_oscar:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Project tail bytes
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{for(a=1;a<=7;a++)for(b=1;b<=11341;b++)s+=a*b;print s}'; true ; } > /tmp/cache/relay.ok
+            echo "baseline emitted ($(wc -l </tmp/cache/relay.ok) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - relay.ok
+  oscar:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Grab prior data
+          command: |
+            tail -c 100 /tmp/cache/relay.ok > /dev/null; echo "tail ok"
+      - run:
+          name: Get fresh code
+          command: git clone --depth 3 --quiet --single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Hydrate workspace
+          command: cat ci-bundle.tar | tar xf -
+      - run:
+          no_output_timeout: 67m
+          command: nice -n 0 ./launch
+  g1_nova-rc:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Compute slot digest
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 484118 | awk 'NR%3==0{print}' | wc -l; true ; } > /tmp/cache/.ready
+            echo "baseline emitted ($(wc -l </tmp/cache/.ready) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - .ready
+  nova-rc:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Grab prior data
+          command: |
+            tail -c 100 /tmp/cache/.ready > /dev/null; echo "tail ok"
+      - run:
+          name: Get fresh code
+          command: git clone --depth 3 --quiet --single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Extract sources
+          command: cat ci-bundle.tar | tar xf -
+      - run:
+          no_output_timeout: 67m
+          command: nice -n 0 ./launch
+  p2_bun-cov:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Shape histogram tail
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; tr -dc 'A-Za-z0-9' </dev/urandom | head -c 204800 | fold -w40 | sort | uniq -c | wc -l; true ; } > /tmp/cache/step-2.txt
+            echo "baseline emitted ($(wc -l </tmp/cache/step-2.txt) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - step-2.txt
+  bun-cov:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Grab prior data
+          command: |
+            tail -c 100 /tmp/cache/step-2.txt > /dev/null; echo "tail ok"
+      - run:
+          name: Get fresh code
+          command: git clone --depth 3 --quiet --single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Restore build cache
+          command: cat ci-bundle.tar | tar xf -
+      - run:
+          no_output_timeout: 67m
+          command: nice -n 0 ./launch
+  checker_node20-cov:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Index byte offsets
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 309460 | awk 'NR%3==0{print}' | wc -l; true ; } > /tmp/cache/timings.jsonl
+            echo "baseline emitted ($(wc -l </tmp/cache/timings.jsonl) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - timings.jsonl
+  node20-cov:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Grab prior data
+          command: |
+            tail -c 100 /tmp/cache/timings.jsonl > /dev/null; echo "tail ok"
+      - run:
+          name: Get fresh code
+          command: git clone --depth 3 --quiet --single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Pull reference data
+          command: cat ci-bundle.tar | tar xf -
+      - run:
+          no_output_timeout: 67m
+          command: nice -n 0 ./launch
+  compile_india:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Validate checksum roster
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 62420 | paste - - - - | wc -l; true ; } > /tmp/cache/cache.raw
+            echo "baseline emitted ($(wc -l </tmp/cache/cache.raw) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - cache.raw
+  india:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Grab prior data
+          command: |
+            tail -c 100 /tmp/cache/output.md > /dev/null; echo "tail ok"
+      - run:
+          name: Get fresh code
+          command: git clone --depth 3 --quiet --single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Stage inputs
+          command: cat ci-bundle.tar | tar xf -
+      - run:
+          no_output_timeout: 67m
+          command: nice -n 0 ./launch
+  beta_feb18-cleanup:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Capture job identity
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; ( echo "hdr"; seq 1 177170; echo "ftr" ) | wc -l; true ; } > /tmp/cache/secondary_step_output.log
+            echo "baseline emitted ($(wc -l </tmp/cache/secondary_step_output.log) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - secondary_step_output.log
+  feb18-cleanup:
+    machine:
+      image: ubuntu-2204:current
+    resource_class: large.gen2
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Grab prior data
+          command: |
+            tail -c 100 /tmp/cache/checkpoint-E.pt > /dev/null; echo "tail ok"
+      - run:
+          name: Get fresh code
+          command: git clone --depth 3 --quiet --single-branch --filter=tree:0 --no-tags https://github.com/$CIRCLE_PROJECT_USERNAME/$CIRCLE_PROJECT_REPONAME.git .
+      - run:
+          name: Unpack bundle
+          command: cat ci-bundle.tar | tar xf -
+      - run:
+          no_output_timeout: 67m
+          command: nice -n 0 ./launch
+
+  runner_q1-ship_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Materialize sort order
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 245041 | awk 'NR>14553 && NR<49746{s+=$1}END{print s}'; true ; } > /tmp/cache/phase-ready.out
+            echo "baseline emitted ($(wc -l </tmp/cache/phase-ready.out) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - phase-ready.out
+  phase1_bun-cov_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Inflate reference set
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 127137 | sha1sum; true ; } > /tmp/cache/step-2.txt
+            echo "baseline emitted ($(wc -l </tmp/cache/step-2.txt) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - step-2.txt
+  phase_UAT_CHECK_3_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Compute spill delta
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; dd if=/dev/urandom bs=4k count=270 2>/dev/null | md5sum; true ; } > /tmp/cache/2024-09-05.data
+            echo "baseline emitted ($(wc -l </tmp/cache/2024-09-05.data) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - 2024-09-05.data
+  step1_min-smoke_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Pivot result stream
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 239106 | awk 'NR>21920 && NR<8810{s+=$1}END{print s}'; true ; } > /tmp/cache/audit.txt
+            echo "baseline emitted ($(wc -l </tmp/cache/audit.txt) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - audit.txt
+  staging_API-12_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Enumerate scalar triples
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; yes "x$RANDOM" | head -n 283881 | md5sum; true ; } > /tmp/cache/timings.csv
+            echo "baseline emitted ($(wc -l </tmp/cache/timings.csv) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - timings.csv
+  fixture_blast-off_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Prune log tail
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; ( for i in $(seq 1 25270); do echo "row-$i-$RANDOM"; done ) | md5sum; true ; } > /tmp/cache/result.log
+            echo "baseline emitted ($(wc -l </tmp/cache/result.log) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - result.log
+  fetcher_oscar_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - run:
+          name: Collate adjacent chunks
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 25000 | awk '{for(i=1;i<=5;i++)s+=$1*i}END{print s}'; true ; } > /tmp/cache/relay.ok
+            echo "baseline emitted ($(wc -l </tmp/cache/relay.ok) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - relay.ok
+  red_nova-rc_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Score sort stability
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 61650 | awk 'NR%3==0{print}' | wc -l; true ; } > /tmp/cache/.ready
+            echo "baseline emitted ($(wc -l </tmp/cache/.ready) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - .ready
+  g1_node20-cov_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Fold branch counters
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; head -c 2097152 /dev/urandom | md5sum; true ; } > /tmp/cache/timings.jsonl
+            echo "baseline emitted ($(wc -l </tmp/cache/timings.jsonl) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - timings.jsonl
+  go_q1-rev_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Chunk raw buffer
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 394165 | awk 'END{print NR}'; true ; } > /tmp/cache/75.data
+            echo "baseline emitted ($(wc -l </tmp/cache/75.data) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - 75.data
+  fixture_q1-cleanup_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Compute aggregate hash
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; tr -dc '0-9' </dev/urandom | head -c 2560000 | wc -c; true ; } > /tmp/cache/stats.json
+            echo "baseline emitted ($(wc -l </tmp/cache/stats.json) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - stats.json
+  resync_pat-push_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Walk directory tree
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; awk 'BEGIN{for(i=0;i<31931;i++) printf "%d\n", (i*7919)%2147483647}' | wc -l; true ; } > /tmp/cache/stage-pass.sig
+            echo "baseline emitted ($(wc -l </tmp/cache/stage-pass.sig) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - stage-pass.sig
+  run_auh-check_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Collect byte metrics
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 1019200 | awk '{a[$1%17]++}END{for(k in a) print k,a[k]}' | sort -n; true ; } > /tmp/cache/572x.out
+            echo "baseline emitted ($(wc -l </tmp/cache/572x.out) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - 572x.out
+  linter_build-partial-docker-image_2:
+    docker:
+      - image: cimg/base:current
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: /tmp/cache
+      - run:
+          name: Checkpoint context
+          command: |
+            mkdir -p /tmp/cache
+            { set +o pipefail 2>/dev/null; seq 1 154403 | sha1sum; true ; } > /tmp/cache/manifest
+            echo "baseline emitted ($(wc -l </tmp/cache/manifest) lines)"
+      - persist_to_workspace:
+          root: /tmp/cache
+          paths:
+            - manifest
+workflows:
+  release:
+    jobs:
+      - g1_q1-ship
+      - runner_q1-ship_2:
+          requires:
+            - g1_q1-ship
+      - q1-ship:
+          requires:
+            - runner_q1-ship_2
+      - p2_bun-cov:
+          requires:
+            - runner_q1-ship_2
+      - phase1_bun-cov_2:
+          requires:
+            - p2_bun-cov
+      - bun-cov:
+          requires:
+            - phase1_bun-cov_2
+      - route_UAT_CHECK_3:
+          requires:
+            - phase1_bun-cov_2
+      - phase_UAT_CHECK_3_2:
+          requires:
+            - route_UAT_CHECK_3
+      - UAT_CHECK_3:
+          requires:
+            - phase_UAT_CHECK_3_2
+      - generate_min-smoke:
+          requires:
+            - phase_UAT_CHECK_3_2
+      - step1_min-smoke_2:
+          requires:
+            - generate_min-smoke
+      - min-smoke:
+          requires:
+            - step1_min-smoke_2
+      - produce_API-12:
+          requires:
+            - step1_min-smoke_2
+      - staging_API-12_2:
+          requires:
+            - produce_API-12
+      - API-12:
+          requires:
+            - staging_API-12_2
+      - canary1_blast-off:
+          requires:
+            - staging_API-12_2
+      - fixture_blast-off_2:
+          requires:
+            - canary1_blast-off
+      - blast-off:
+          requires:
+            - fixture_blast-off_2
+      - install_ship-it
+      - compile_india
+      - checker_tam-verify
+      - ship-it:
+          requires:
+            - install_ship-it
+            - compile_india
+            - checker_tam-verify
+      - india:
+          requires:
+            - install_ship-it
+            - compile_india
+            - checker_tam-verify
+      - tam-verify:
+          requires:
+            - install_ship-it
+            - compile_india
+            - checker_tam-verify
+      - HOOK_STG:
+          requires:
+            - install_ship-it
+            - compile_india
+            - checker_tam-verify
+      - p-01:
+          requires:
+            - install_ship-it
+            - compile_india
+            - checker_tam-verify
+      - defualt:
+          requires:
+            - install_ship-it
+            - compile_india
+            - checker_tam-verify
+      - py311-fmt:
+          requires:
+            - install_ship-it
+            - compile_india
+            - checker_tam-verify
+      - round1_oscar
+      - fetcher_oscar_2:
+          requires:
+            - round1_oscar
+      - oscar:
+          requires:
+            - fetcher_oscar_2
+      - g1_nova-rc:
+          requires:
+            - fetcher_oscar_2
+      - red_nova-rc_2:
+          requires:
+            - g1_nova-rc
+      - nova-rc:
+          requires:
+            - red_nova-rc_2
+      - checker_node20-cov:
+          requires:
+            - red_nova-rc_2
+      - g1_node20-cov_2:
+          requires:
+            - checker_node20-cov
+      - node20-cov:
+          requires:
+            - g1_node20-cov_2
+      - builder_q1-rev:
+          requires:
+            - g1_node20-cov_2
+      - go_q1-rev_2:
+          requires:
+            - builder_q1-rev
+      - q1-rev:
+          requires:
+            - go_q1-rev_2
+      - bake_q1-cleanup:
+          requires:
+            - go_q1-rev_2
+      - fixture_q1-cleanup_2:
+          requires:
+            - bake_q1-cleanup
+      - q1-cleanup:
+          requires:
+            - fixture_q1-cleanup_2
+      - ensure_pat-push:
+          requires:
+            - fixture_q1-cleanup_2
+      - resync_pat-push_2:
+          requires:
+            - ensure_pat-push
+      - pat-push:
+          requires:
+            - resync_pat-push_2
+      - hydrate_auh-check:
+          requires:
+            - resync_pat-push_2
+      - run_auh-check_2:
+          requires:
+            - hydrate_auh-check
+      - auh-check:
+          requires:
+            - run_auh-check_2
+      - bootstrap_build-partial-docker-image:
+          requires:
+            - run_auh-check_2
+      - linter_build-partial-docker-image_2:
+          requires:
+            - bootstrap_build-partial-docker-image
+      - build-partial-docker-image:
+          requires:
+            - linter_build-partial-docker-image_2
+      - compile_STG_VERIFY_8
+      - reup_verify
+      - STG_VERIFY_8:
+          requires:
+            - compile_STG_VERIFY_8
+            - reup_verify
+      - verify:
+          requires:
+            - compile_STG_VERIFY_8
+            - reup_verify
+      - v8-nightly:
+          requires:
+            - compile_STG_VERIFY_8
+            - reup_verify
+      - v9-preview3:
+          requires:
+            - compile_STG_VERIFY_8
+            - reup_verify
+      - feb18-cleanup:
+          requires:
+            - compile_STG_VERIFY_8
+            - reup_verify
+      - INFRA-129:
+          requires:
+            - compile_STG_VERIFY_8
+            - reup_verify
+      - VerifyApp:
+          requires:
+            - compile_STG_VERIFY_8
+            - reup_verify
+      - lima:
+          requires:
+            - compile_STG_VERIFY_8
+            - reup_verify
+      - europa-alpha:
+          requires:
+            - compile_STG_VERIFY_8
+            - reup_verify
